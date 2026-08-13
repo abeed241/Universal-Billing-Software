@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fontSize, spacing } from '@/constants/theme';
 import { formatCurrency } from '@/lib/format';
@@ -13,7 +13,11 @@ interface ProductCardProps {
 export function ProductCard({ product, currency = 'INR', onPress }: ProductCardProps) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={({ pressed, hovered }) => [
+        styles.card,
+        pressed && styles.pressed,
+        Platform.OS === 'web' && hovered && styles.hovered,
+      ]}
       onPress={onPress}>
       <View style={styles.content}>
         <Text style={styles.name} numberOfLines={1}>
@@ -44,6 +48,11 @@ const styles = StyleSheet.create({
   pressed: {
     backgroundColor: '#F0FDFA',
     borderColor: colors.primary,
+  },
+  hovered: {
+    backgroundColor: '#F0FDFA',
+    borderColor: colors.primary,
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
   },
   content: {
     flex: 1,

@@ -1,17 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-} from 'react-native';
+import { StyleSheet } from 'react-native';
 
+import { AuthShell } from '@/components/AuthShell';
 import { Button } from '@/components/Button';
+import { FormMessage } from '@/components/FormMessage';
 import { Input } from '@/components/Input';
-import { colors, fontSize, spacing } from '@/constants/theme';
 import { useStore } from '@/context/StoreContext';
 
 export default function StoreSetupScreen() {
@@ -21,98 +15,80 @@ export default function StoreSetupScreen() {
   const [phone, setPhone] = useState('');
   const [taxRate, setTaxRate] = useState('0');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
+    setError(null);
+
     if (!name.trim()) {
-      Alert.alert('Error', 'Store name is required');
+      setError('Store name is required.');
       return;
     }
 
     const tax = parseFloat(taxRate) || 0;
     if (tax < 0 || tax > 100) {
-      Alert.alert('Error', 'Tax rate must be between 0 and 100');
+      setError('Tax rate must be between 0 and 100.');
       return;
     }
 
     setLoading(true);
-    const { error } = await createStore({
-      name: name.trim(),
-      address: address.trim() || undefined,
-      phone: phone.trim() || undefined,
-      tax_rate: tax,
-      currency: 'INR',
-    });
-    setLoading(false);
+    try {
+      const { error: createError } = await createStore({
+        name: name.trim(),
+        address: address.trim() || undefined,
+        phone: phone.trim() || undefined,
+        tax_rate: tax,
+        currency: 'INR',
+      });
 
-    if (error) {
-      Alert.alert('Setup Failed', error);
-      return;
+      if (createError) {
+        setError(createError);
+        return;
+      }
+
+      router.replace('/');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    router.replace('/');
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Set Up Your Store</Text>
-        <Text style={styles.subtitle}>This info appears on your receipts</Text>
+    <AuthShell title="Set Up Your Store" subtitle="This info appears on your receipts">
+      <Input
+        label="Store Name *"
+        value={name}
+        onChangeText={setName}
+        placeholder="My Retail Store"
+      />
+      <Input
+        label="Address"
+        value={address}
+        onChangeText={setAddress}
+        placeholder="123 Main Street"
+        multiline
+      />
+      <Input
+        label="Phone"
+        value={phone}
+        onChangeText={setPhone}
+        keyboardType="phone-pad"
+        placeholder="+91 98765 43210"
+      />
+      <Input
+        label="Tax Rate (%)"
+        value={taxRate}
+        onChangeText={setTaxRate}
+        keyboardType="decimal-pad"
+        placeholder="18"
+      />
 
-        <Input
-          label="Store Name *"
-          value={name}
-          onChangeText={setName}
-          placeholder="My Retail Store"
-        />
-        <Input
-          label="Address"
-          value={address}
-          onChangeText={setAddress}
-          placeholder="123 Main Street"
-          multiline
-        />
-        <Input
-          label="Phone"
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-          placeholder="+91 98765 43210"
-        />
-        <Input
-          label="Tax Rate (%)"
-          value={taxRate}
-          onChangeText={setTaxRate}
-          keyboardType="decimal-pad"
-          placeholder="18"
-        />
+      <FormMessage error={error} />
 
-        <Button title="Continue" onPress={handleSubmit} loading={loading} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <Button title="Continue" onPress={handleSubmit} loading={loading} />
+    </AuthShell>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    padding: spacing.lg,
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: '800',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
-});
+const styles = StyleSheet.create({});

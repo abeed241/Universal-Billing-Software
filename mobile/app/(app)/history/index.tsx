@@ -11,7 +11,9 @@ import {
 } from 'react-native';
 
 import { EmptyState } from '@/components/EmptyState';
-import { colors, fontSize, spacing } from '@/constants/theme';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { colors, fontSize, shadows, spacing } from '@/constants/theme';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useStore } from '@/context/StoreContext';
 import { formatCurrency, formatDate, formatPaymentMethod } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
@@ -19,6 +21,7 @@ import type { Bill } from '@/lib/types';
 
 export default function HistoryScreen() {
   const { store } = useStore();
+  const isDesktop = useIsDesktop();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,7 +72,7 @@ export default function HistoryScreen() {
   return (
     <FlatList
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, isDesktop && styles.contentDesktop]}
       data={bills}
       keyExtractor={(item) => item.id}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -77,7 +80,7 @@ export default function HistoryScreen() {
         <Link
           href={{ pathname: '/(app)/bill/[id]', params: { id: item.id } }}
           asChild>
-          <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+          <Pressable style={({ pressed }) => [styles.card, shadows.sm, pressed && styles.pressed]}>
             <View style={styles.row}>
               <Text style={styles.invoice}>{item.invoice_number}</Text>
               <Text style={styles.total}>
@@ -102,6 +105,11 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
+  },
+  contentDesktop: {
+    maxWidth: 900,
+    alignSelf: 'center',
+    width: '100%',
   },
   card: {
     backgroundColor: colors.surface,

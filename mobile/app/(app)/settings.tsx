@@ -2,22 +2,23 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
+  View,
 } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
+import { ScreenContainer } from '@/components/ScreenContainer';
 import { colors, fontSize, spacing } from '@/constants/theme';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useAuth } from '@/context/AuthContext';
 import { useStore } from '@/context/StoreContext';
 
 export default function SettingsScreen() {
   const { signOut, user } = useAuth();
   const { store, updateStore } = useStore();
+  const isDesktop = useIsDesktop();
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -77,10 +78,8 @@ export default function SettingsScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScreenContainer scroll scrollProps={{ keyboardShouldPersistTaps: 'handled' }}>
+      <View style={[styles.form, isDesktop && styles.formDesktop]}>
         <Text style={styles.sectionTitle}>Account</Text>
         <Text style={styles.email}>{user?.email ?? '—'}</Text>
 
@@ -117,16 +116,24 @@ export default function SettingsScreen() {
           onPress={handleSignOut}
           style={styles.signOut}
         />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    padding: spacing.lg,
-    backgroundColor: colors.background,
+  form: {
+    flex: 1,
+  },
+  formDesktop: {
+    maxWidth: 560,
+    alignSelf: 'center',
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   sectionTitle: {
     fontSize: fontSize.md,

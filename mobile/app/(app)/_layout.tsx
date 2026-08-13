@@ -1,16 +1,24 @@
 import { Tabs } from 'expo-router';
 
+import { AdaptiveTabBar } from '@/components/AdaptiveTabBar';
 import { colors } from '@/constants/theme';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 
 export default function AppLayout() {
+  const isDesktop = useIsDesktop();
+
   return (
     <Tabs
+      tabBar={(props) => <AdaptiveTabBar {...props} />}
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
+        headerShown: !isDesktop,
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
-        tabBarStyle: { backgroundColor: colors.surface },
+        headerShadowVisible: false,
+        tabBarStyle: { display: 'none' },
+        sceneStyle: { backgroundColor: colors.background },
       }}>
       <Tabs.Screen
         name="index"

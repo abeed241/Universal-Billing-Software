@@ -7,11 +7,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  View,
 } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
+import { ScreenContainer } from '@/components/ScreenContainer';
 import { colors, fontSize, spacing } from '@/constants/theme';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useStore } from '@/context/StoreContext';
 import { supabase } from '@/lib/supabase';
 import type { Product } from '@/lib/types';
@@ -27,6 +30,7 @@ export default function ProductFormScreen({ productId }: ProductFormScreenProps)
   const id = productId ?? params.id;
   const isEdit = Boolean(id);
   const { store } = useStore();
+  const isDesktop = useIsDesktop();
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -140,7 +144,8 @@ export default function ProductFormScreen({ productId }: ProductFormScreenProps)
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScreenContainer scroll scrollProps={{ keyboardShouldPersistTaps: 'handled' }}>
+        <View style={[styles.form, isDesktop && styles.formDesktop]}>
         <Input label="Product Name *" value={name} onChangeText={setName} placeholder="Item name" />
         <Input
           label="Price *"
@@ -185,16 +190,26 @@ export default function ProductFormScreen({ productId }: ProductFormScreenProps)
         {isEdit ? (
           <Button title="Delete Product" variant="danger" onPress={handleDelete} style={styles.deleteBtn} />
         ) : null}
-      </ScrollView>
+        </View>
+      </ScreenContainer>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: {
+  form: {
+    flex: 1,
+  },
+  formDesktop: {
+    maxWidth: 560,
+    alignSelf: 'center',
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
     padding: spacing.lg,
-    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   label: {
     fontSize: fontSize.sm,

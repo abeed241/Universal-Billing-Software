@@ -1,25 +1,21 @@
-import { useCallback, useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-} from 'react-native';
 import { Link, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { Input } from '@/components/Input';
 import { ProductCard } from '@/components/ProductCard';
-import { colors, fontSize, spacing } from '@/constants/theme';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { spacing } from '@/constants/theme';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useStore } from '@/context/StoreContext';
 import { supabase } from '@/lib/supabase';
 import type { Product } from '@/lib/types';
 
 export default function ProductsScreen() {
   const { store } = useStore();
+  const isDesktop = useIsDesktop();
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -54,53 +50,77 @@ export default function ProductsScreen() {
   );
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Input
-          placeholder="Search products..."
-          value={search}
-          onChangeText={setSearch}
-        />
-
-        {filtered.length === 0 ? (
-          <EmptyState
-            title={loading ? 'Loading products...' : 'No products yet'}
-            message={loading ? undefined : 'Add your first product to start billing'}
-            loading={loading}
+    <ScreenContainer scroll contentStyle={styles.content}>
+      <View style={styles.toolbar}>
+        <View style={styles.searchWrap}>
+          <Input
+            placeholder="Search products..."
+            value={search}
+            onChangeText={setSearch}
           />
-        ) : (
-          filtered.map((product) => (
-            <Link
-              key={product.id}
-              href={{ pathname: '/(app)/products/[id]', params: { id: product.id } }}
-              asChild>
-              <ProductCard product={product} currency={store?.currency} />
-            </Link>
-          ))
-        )}
-      </ScrollView>
+        </View>
+        <Link href="/(app)/products/add" asChild>
+          <Button title="+ Add Product" style={styles.addBtn} />
+        </Link>
+      </View>
 
-      <Link href="/(app)/products/add" asChild>
-        <Button title="+ Add Product" style={styles.fab} />
-      </Link>
-    </KeyboardAvoidingView>
+      {filtered.length === 0 ? (
+        <EmptyState
+          title={loading ? 'Loading products...' : 'No products yet'}
+          message={loading ? undefined : 'Add your first product to start billing'}
+          loading={loading}
+        />
+      ) : (
+        <View style={[styles.grid, isDesktop && styles.gridDesktop]}>
+          {filtered.map((product) => (
+            <View
+              key={product.id}
+              style={[styles.gridItem, isDesktop && styles.gridItemDesktop]}>
+              <Link
+                href={{ pathname: '/(app)/products/[id]', params: { id: product.id } }}
+                asChild>
+                <ProductCard product={product} currency={store?.currency} />
+              </Link>
+            </View>
+          ))}
+        </View>
+      )}
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   content: {
-    padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: spacing.xl,
   },
-  fab: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    left: spacing.lg,
-    right: spacing.lg,
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  searchWrap: {
+    flex: 1,
+  },
+  addBtn: {
+    minWidth: 160,
+    marginTop: 22,
+  },
+  grid: {
+    gap: spacing.sm,
+  },
+  gridDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  gridItem: {
+    width: '100%',
+  },
+  gridItemDesktop: {
+    width: '48%',
+    minWidth: 280,
+    flexGrow: 1,
+    maxWidth: '32%',
   },
 });
