@@ -8,7 +8,10 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (
+    email: string,
+    password: string
+  ) => Promise<{ error: string | null; needsEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -44,11 +47,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       signIn: async (email, password) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error?.message === 'Invalid login credentials') {
+          return {
+            error:
+              'Invalid email or password. If you just registered, confirm your email first (check inbox/spam), or disable "Confirm email" in Supabase Auth settings for development.',
+          };
+        }
         return { error: error?.message ?? null };
       },
       signUp: async (email, password) => {
-        const { error } = await supabase.auth.signUp({ email, password });
-        return { error: error?.message ?? null };
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) {
+          return { error: error.message };
+        }
+
+        // Email confirmation disabled — user is signed in immediately.
+        if (data.session) {
+          return { error: null, needsEmailConfirmation: false };
+        }
+
+        // Email confirmation enabled — account created but must verify email.
+        if (data.user && !data.session) {
+          return { error: null, needsEmailConfirmation: true };
+        }
+
+        return { error: 'Registration failed. Please try again.' };
       },
       signOut: async () => {
         await supabase.auth.signOut();

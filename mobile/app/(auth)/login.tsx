@@ -1,18 +1,12 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { AuthShell } from '@/components/AuthShell';
 import { Button } from '@/components/Button';
+import { FormMessage } from '@/components/FormMessage';
 import { Input } from '@/components/Input';
-import { colors, fontSize, spacing } from '@/constants/theme';
+import { fontSize, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
@@ -21,12 +15,13 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isSupabaseConfigured) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Setup Required</Text>
-        <Text style={styles.subtitle}>
+      <View style={styles.setup}>
+        <Text style={styles.setupTitle}>Setup Required</Text>
+        <Text style={styles.setupText}>
           Add your Supabase credentials to mobile/.env before signing in.
         </Text>
         <Link href="/(auth)/setup" asChild>
@@ -37,79 +32,74 @@ export default function LoginScreen() {
   }
 
   const handleLogin = async () => {
+    setError(null);
+
     if (!email.trim() || !password) {
-      Alert.alert('Error', 'Please enter email and password');
+      setError('Please enter email and password.');
       return;
     }
 
     setLoading(true);
-    const { error } = await signIn(email.trim(), password);
-    setLoading(false);
-
-    if (error) {
-      Alert.alert('Login Failed', error);
-      return;
+    try {
+      const { error: signInError } = await signIn(email.trim(), password);
+      if (signInError) {
+        setError(signInError);
+        return;
+      }
+      router.replace('/');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    router.replace('/');
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Universal Billing</Text>
-        <Text style={styles.subtitle}>Sign in to manage your store</Text>
+    <AuthShell title="Sign In" subtitle="Sign in to manage your store">
+      <Input
+        label="Email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoComplete="email"
+        placeholder="you@store.com"
+      />
+      <Input
+        label="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        autoComplete="password"
+        placeholder="Your password"
+      />
 
-        <Input
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-          placeholder="you@store.com"
-        />
-        <Input
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="password"
-          placeholder="Your password"
-        />
+      <FormMessage error={error} />
 
-        <Button title="Sign In" onPress={handleLogin} loading={loading} />
+      <Button title="Sign In" onPress={handleLogin} loading={loading} />
 
-        <Link href="/(auth)/register" asChild>
-          <Button title="Create Account" variant="outline" style={styles.linkBtn} />
-        </Link>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <Link href="/(auth)/register" asChild>
+        <Button title="Create Account" variant="outline" style={styles.linkBtn} />
+      </Link>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    padding: spacing.lg,
+  setup: {
+    flex: 1,
     justifyContent: 'center',
-    backgroundColor: colors.background,
+    alignItems: 'center',
+    padding: spacing.xl,
   },
-  title: {
-    fontSize: fontSize.xxl,
+  setupTitle: {
+    fontSize: fontSize.xl,
     fontWeight: '800',
-    color: colors.primary,
-    textAlign: 'center',
     marginBottom: spacing.sm,
   },
-  subtitle: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
+  setupText: {
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   linkBtn: {
     marginTop: spacing.md,

@@ -17,7 +17,9 @@ import { CartItemRow } from '@/components/CartItemRow';
 import { EmptyState } from '@/components/EmptyState';
 import { Input } from '@/components/Input';
 import { ProductCard } from '@/components/ProductCard';
-import { colors, fontSize, spacing } from '@/constants/theme';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { colors, fontSize, shadows, spacing } from '@/constants/theme';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useStore } from '@/context/StoreContext';
 import {
   calculateDiscountAmount,
@@ -30,8 +32,143 @@ import { formatCurrency } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import type { CartItem, PaymentMethod, Product } from '@/lib/types';
 
+function CartPanel({
+  cart,
+  currency,
+  store,
+  discount,
+  setDiscount,
+  discountType,
+  setDiscountType,
+  paymentMethod,
+  setPaymentMethod,
+  subtotal,
+  discountAmount,
+  taxAmount,
+  total,
+  submitting,
+  onIncrease,
+  onDecrease,
+  onRemove,
+  onCheckout,
+  compact,
+}: {
+  cart: CartItem[];
+  currency: string;
+  store: { tax_rate: number } | null;
+  discount: string;
+  setDiscount: (v: string) => void;
+  discountType: 'flat' | 'percent';
+  setDiscountType: (v: 'flat' | 'percent') => void;
+  paymentMethod: PaymentMethod;
+  setPaymentMethod: (v: PaymentMethod) => void;
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  total: number;
+  submitting: boolean;
+  onIncrease: (id: string) => void;
+  onDecrease: (id: string) => void;
+  onRemove: (id: string) => void;
+  onCheckout: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <View style={[styles.cartPanel, compact && styles.cartPanelCompact, shadows.md]}>
+      <Text style={styles.cartTitle}>Cart ({cart.length})</Text>
+
+      <ScrollView style={styles.cartScroll} nestedScrollEnabled>
+        {cart.length === 0 ? (
+          <Text style={styles.cartEmpty}>Tap products to add them here</Text>
+        ) : (
+          cart.map((item) => (
+            <CartItemRow
+              key={item.product.id}
+              item={item}
+              currency={currency}
+              onIncrease={() => onIncrease(item.product.id)}
+              onDecrease={() => onDecrease(item.product.id)}
+              onRemove={() => onRemove(item.product.id)}
+            />
+          ))
+        )}
+      </ScrollView>
+
+      <Text style={styles.sectionTitle}>Discount</Text>
+      <View style={styles.row}>
+        <Button
+          title="Flat"
+          variant={discountType === 'flat' ? 'primary' : 'outline'}
+          onPress={() => setDiscountType('flat')}
+          style={styles.chip}
+          textStyle={styles.chipText}
+        />
+        <Button
+          title="%"
+          variant={discountType === 'percent' ? 'primary' : 'outline'}
+          onPress={() => setDiscountType('percent')}
+          style={styles.chip}
+          textStyle={styles.chipText}
+        />
+      </View>
+      <Input
+        label={discountType === 'percent' ? 'Discount (%)' : 'Discount amount'}
+        value={discount}
+        onChangeText={setDiscount}
+        keyboardType="decimal-pad"
+        placeholder="0"
+      />
+
+      <Text style={styles.sectionTitle}>Payment</Text>
+      <View style={styles.row}>
+        {(['cash', 'upi', 'card'] as PaymentMethod[]).map((method) => (
+          <Button
+            key={method}
+            title={method.toUpperCase()}
+            variant={paymentMethod === method ? 'primary' : 'outline'}
+            onPress={() => setPaymentMethod(method)}
+            style={styles.chip}
+            textStyle={styles.chipText}
+          />
+        ))}
+      </View>
+
+      <View style={styles.totals}>
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>Subtotal</Text>
+          <Text style={styles.totalValue}>{formatCurrency(subtotal, currency)}</Text>
+        </View>
+        {discountAmount > 0 ? (
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Discount</Text>
+            <Text style={styles.totalValue}>−{formatCurrency(discountAmount, currency)}</Text>
+          </View>
+        ) : null}
+        {(store?.tax_rate ?? 0) > 0 ? (
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Tax ({store?.tax_rate}%)</Text>
+            <Text style={styles.totalValue}>{formatCurrency(taxAmount, currency)}</Text>
+          </View>
+        ) : null}
+        <View style={[styles.totalRow, styles.grandTotal]}>
+          <Text style={styles.grandLabel}>Total</Text>
+          <Text style={styles.grandValue}>{formatCurrency(total, currency)}</Text>
+        </View>
+      </View>
+
+      <Button
+        title="Generate Bill"
+        onPress={onCheckout}
+        loading={submitting}
+        disabled={cart.length === 0}
+      />
+    </View>
+  );
+}
+
 export default function NewBillScreen() {
   const { store } = useStore();
+  const isDesktop = useIsDesktop();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState('');
@@ -155,6 +292,69 @@ export default function NewBillScreen() {
     router.push({ pathname: '/(app)/bill/[id]', params: { id: String(data) } });
   };
 
+  const cartPanelProps = {
+    cart,
+    currency,
+    store,
+    discount,
+    setDiscount,
+    discountType,
+    setDiscountType,
+    paymentMethod,
+    setPaymentMethod,
+    subtotal,
+    discountAmount,
+    taxAmount,
+    total,
+    submitting,
+    onIncrease: (id: string) => updateQty(id, 1),
+    onDecrease: (id: string) => updateQty(id, -1),
+    onRemove: removeFromCart,
+    onCheckout: handleCheckout,
+  };
+
+  if (isDesktop) {
+    return (
+      <ScreenContainer contentStyle={styles.desktopContent}>
+        <View style={styles.desktopLayout}>
+          <View style={styles.productsPane}>
+            <Text style={styles.pageTitle}>New Bill</Text>
+            <Input placeholder="Search products..." value={search} onChangeText={setSearch} />
+
+            {filtered.length === 0 ? (
+              <EmptyState
+                title={loadingProducts ? 'Loading products...' : 'No products found'}
+                message={
+                  loadingProducts ? undefined : 'Add products from the Products tab before billing'
+                }
+                loading={loadingProducts}
+              />
+            ) : (
+              <FlatList
+                data={filtered}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                columnWrapperStyle={styles.productRow}
+                contentContainerStyle={styles.productList}
+                renderItem={({ item }) => (
+                  <View style={styles.productCell}>
+                    <ProductCard
+                      product={item}
+                      currency={currency}
+                      onPress={() => addToCart(item)}
+                    />
+                  </View>
+                )}
+              />
+            )}
+          </View>
+
+          <CartPanel {...cartPanelProps} compact />
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   if (step === 'cart') {
     return (
       <KeyboardAvoidingView
@@ -162,99 +362,12 @@ export default function NewBillScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           style={styles.container}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={styles.mobileCartContent}
           keyboardShouldPersistTaps="handled">
           <Pressable onPress={() => setStep('products')}>
             <Text style={styles.backLink}>← Add more products</Text>
           </Pressable>
-
-          <Text style={styles.sectionTitle}>Cart ({cart.length})</Text>
-
-          {cart.length === 0 ? (
-            <EmptyState title="Cart is empty" message="Go back and add products" />
-          ) : (
-            cart.map((item) => (
-              <CartItemRow
-                key={item.product.id}
-                item={item}
-                currency={currency}
-                onIncrease={() => updateQty(item.product.id, 1)}
-                onDecrease={() => updateQty(item.product.id, -1)}
-                onRemove={() => removeFromCart(item.product.id)}
-              />
-            ))
-          )}
-
-          <Text style={styles.sectionTitle}>Discount</Text>
-          <View style={styles.row}>
-            <Button
-              title="Flat"
-              variant={discountType === 'flat' ? 'primary' : 'outline'}
-              onPress={() => setDiscountType('flat')}
-              style={styles.chip}
-              textStyle={styles.chipText}
-            />
-            <Button
-              title="%"
-              variant={discountType === 'percent' ? 'primary' : 'outline'}
-              onPress={() => setDiscountType('percent')}
-              style={styles.chip}
-              textStyle={styles.chipText}
-            />
-          </View>
-          <Input
-            label={discountType === 'percent' ? 'Discount (%)' : 'Discount amount'}
-            value={discount}
-            onChangeText={setDiscount}
-            keyboardType="decimal-pad"
-            placeholder="0"
-          />
-
-          <Text style={styles.sectionTitle}>Payment</Text>
-          <View style={styles.row}>
-            {(['cash', 'upi', 'card'] as PaymentMethod[]).map((method) => (
-              <Button
-                key={method}
-                title={method.toUpperCase()}
-                variant={paymentMethod === method ? 'primary' : 'outline'}
-                onPress={() => setPaymentMethod(method)}
-                style={styles.chip}
-                textStyle={styles.chipText}
-              />
-            ))}
-          </View>
-
-          <View style={styles.totals}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Subtotal</Text>
-              <Text style={styles.totalValue}>{formatCurrency(subtotal, currency)}</Text>
-            </View>
-            {discountAmount > 0 ? (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Discount</Text>
-                <Text style={styles.totalValue}>
-                  −{formatCurrency(discountAmount, currency)}
-                </Text>
-              </View>
-            ) : null}
-            {(store?.tax_rate ?? 0) > 0 ? (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Tax ({store?.tax_rate}%)</Text>
-                <Text style={styles.totalValue}>{formatCurrency(taxAmount, currency)}</Text>
-              </View>
-            ) : null}
-            <View style={[styles.totalRow, styles.grandTotal]}>
-              <Text style={styles.grandLabel}>Total</Text>
-              <Text style={styles.grandValue}>{formatCurrency(total, currency)}</Text>
-            </View>
-          </View>
-
-          <Button
-            title="Generate Bill"
-            onPress={handleCheckout}
-            loading={submitting}
-            disabled={cart.length === 0}
-          />
+          <CartPanel {...cartPanelProps} />
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -264,20 +377,14 @@ export default function NewBillScreen() {
     <View style={styles.flex}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Input
-            placeholder="Search products..."
-            value={search}
-            onChangeText={setSearch}
-          />
+          <Input placeholder="Search products..." value={search} onChangeText={setSearch} />
         </View>
 
         {filtered.length === 0 ? (
           <EmptyState
             title={loadingProducts ? 'Loading products...' : 'No products found'}
             message={
-              loadingProducts
-                ? undefined
-                : 'Add products from the Products tab before billing'
+              loadingProducts ? undefined : 'Add products from the Products tab before billing'
             }
             loading={loadingProducts}
           />
@@ -298,7 +405,7 @@ export default function NewBillScreen() {
       </View>
 
       {cart.length > 0 ? (
-        <View style={styles.cartBar}>
+        <View style={[styles.cartBar, shadows.md]}>
           <View>
             <Text style={styles.cartCount}>{cart.length} item(s)</Text>
             <Text style={styles.cartTotal}>{formatCurrency(total, currency)}</Text>
@@ -312,11 +419,65 @@ export default function NewBillScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
-  container: {
+  container: { flex: 1, backgroundColor: colors.background },
+  desktopContent: { flex: 1, maxWidth: 1400 },
+  desktopLayout: {
     flex: 1,
-    backgroundColor: colors.background,
+    flexDirection: 'row',
+    gap: spacing.lg,
+    minHeight: 600,
   },
-  content: {
+  productsPane: {
+    flex: 2,
+  },
+  pageTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  productList: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+  },
+  productRow: {
+    gap: spacing.md,
+  },
+  productCell: {
+    flex: 1,
+    minWidth: '45%',
+  },
+  cartPanel: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+  },
+  cartPanelCompact: {
+    flex: 1,
+    maxWidth: 400,
+    minWidth: 320,
+    alignSelf: 'flex-start',
+    ...(Platform.OS === 'web' ? { position: 'sticky' as const, top: 24 } : {}),
+  },
+  cartTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  cartScroll: {
+    maxHeight: 280,
+    marginBottom: spacing.md,
+  },
+  cartEmpty: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+  },
+  mobileCartContent: {
     padding: spacing.lg,
     paddingBottom: spacing.xl,
   },
@@ -339,7 +500,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.sm,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   row: {
     flexDirection: 'row',
@@ -356,12 +517,12 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
   },
   totals: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    marginVertical: spacing.lg,
+    marginVertical: spacing.md,
   },
   totalRow: {
     flexDirection: 'row',
@@ -407,11 +568,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
   },
   cartCount: {
     color: colors.textSecondary,

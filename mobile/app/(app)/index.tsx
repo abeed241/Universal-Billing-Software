@@ -1,15 +1,18 @@
 import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
-import { colors, fontSize, spacing } from '@/constants/theme';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { colors, fontSize, shadows, spacing } from '@/constants/theme';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useStore } from '@/context/StoreContext';
 import { formatCurrency } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardScreen() {
   const { store } = useStore();
+  const isDesktop = useIsDesktop();
   const [todaySales, setTodaySales] = useState(0);
   const [todayBills, setTodayBills] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,21 +52,31 @@ export default function DashboardScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      <Text style={styles.greeting}>Welcome back</Text>
-      <Text style={styles.storeName}>{store?.name ?? 'Your Store'}</Text>
+    <ScreenContainer
+      scroll
+      scrollProps={{
+        refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />,
+      }}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Welcome back</Text>
+          <Text style={styles.storeName}>{store?.name ?? 'Your Store'}</Text>
+        </View>
+        {isDesktop ? (
+          <Link href="/(app)/bill/new" asChild>
+            <Button title="+ New Bill" style={styles.headerBtn} />
+          </Link>
+        ) : null}
+      </View>
 
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
+      <View style={[styles.statsRow, isDesktop && styles.statsRowDesktop]}>
+        <View style={[styles.statCard, shadows.sm]}>
           <Text style={styles.statLabel}>Today&apos;s Sales</Text>
           <Text style={styles.statValue}>
             {formatCurrency(todaySales, store?.currency ?? 'INR')}
           </Text>
         </View>
-        <View style={styles.statCard}>
+        <View style={[styles.statCard, shadows.sm]}>
           <Text style={styles.statLabel}>Bills Today</Text>
           <Text style={styles.statValue}>{todayBills}</Text>
         </View>
@@ -71,47 +84,53 @@ export default function DashboardScreen() {
 
       <Text style={styles.sectionTitle}>Quick Actions</Text>
 
-      <Link href="/(app)/bill/new" asChild>
-        <Button title="New Bill" style={styles.actionBtn} />
-      </Link>
-      <Link href="/(app)/products/add" asChild>
-        <Button title="Add Product" variant="outline" style={styles.actionBtn} />
-      </Link>
-      <Link href="/(app)/history" asChild>
-        <Button title="View Sales History" variant="outline" style={styles.actionBtn} />
-      </Link>
-    </ScrollView>
+      <View style={[styles.actions, isDesktop && styles.actionsDesktop]}>
+        <Link href="/(app)/bill/new" asChild>
+          <Button title="New Bill" style={styles.actionBtn} />
+        </Link>
+        <Link href="/(app)/products/add" asChild>
+          <Button title="Add Product" variant="outline" style={styles.actionBtn} />
+        </Link>
+        <Link href="/(app)/history" asChild>
+          <Button title="View Sales History" variant="outline" style={styles.actionBtn} />
+        </Link>
+      </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
   },
-  content: {
-    padding: spacing.lg,
+  headerBtn: {
+    minWidth: 140,
   },
   greeting: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
   },
   storeName: {
-    fontSize: fontSize.xl,
+    fontSize: fontSize.xxl,
     fontWeight: '800',
     color: colors.text,
-    marginBottom: spacing.lg,
   },
   statsRow: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  statsRowDesktop: {
+    gap: spacing.lg,
   },
   statCard: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
+    borderRadius: 16,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -119,19 +138,30 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   statValue: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontSize: fontSize.xl,
+    fontWeight: '800',
     color: colors.primary,
   },
   sectionTitle: {
-    fontSize: fontSize.md,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.md,
   },
+  actions: {
+    gap: spacing.sm,
+  },
+  actionsDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
   actionBtn: {
-    marginBottom: spacing.sm,
+    flex: 1,
+    minWidth: 180,
   },
 });

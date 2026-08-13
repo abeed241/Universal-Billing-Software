@@ -1,5 +1,6 @@
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   PressableProps,
   StyleSheet,
@@ -31,10 +32,12 @@ export function Button({
 
   return (
     <Pressable
-      style={({ pressed }) => [
+      accessibilityRole="button"
+      style={({ pressed, hovered }) => [
         styles.base,
         styles[variant],
         pressed && !isDisabled && styles.pressed,
+        Platform.OS === 'web' && hovered && !isDisabled && styles.hovered,
         isDisabled && styles.disabled,
         style,
       ]}
@@ -76,6 +79,10 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.85,
+  },
+  hovered: {
+    opacity: 0.92,
+    transform: [{ scale: 1.01 }],
   },
   disabled: {
     opacity: 0.5,
