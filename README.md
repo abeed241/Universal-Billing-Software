@@ -44,3 +44,34 @@ Scan the QR code with **Expo Go** on your phone, or press `a` for Android emulat
 ├── supabase/         SQL migrations
 └── README.md
 ```
+
+## Deploy as website
+
+### GitHub Pages (recommended)
+
+Live URL: `https://abeed241.github.io/Universal-Billing-Software/`
+
+1. In GitHub repo **Settings → Secrets and variables → Actions**, add:
+   - `EXPO_PUBLIC_SUPABASE_URL`
+   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+2. **Settings → Pages → Source:** GitHub Actions
+3. Push to `main` or `enhance-feature` — workflow deploys automatically
+4. In Supabase **Authentication → URL Configuration**, set Site URL to your GitHub Pages URL
+
+### Vercel (alternative)
+
+| Setting | Value |
+|---------|--------|
+| Root Directory | `mobile` |
+| Build Command | `npx expo export --platform web` |
+| Output Directory | `dist` |
+
+Add the same `EXPO_PUBLIC_*` environment variables in Vercel.
+
+### Local production test
+
+```bash
+cd mobile
+npx expo export --platform web
+npx serve dist
+```

@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import { AuthProvider } from '@/context/AuthContext';
 import { StoreProvider } from '@/context/StoreContext';
 
@@ -32,15 +34,17 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <StoreProvider>
-        <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(app)" />
-        </Stack>
-      </StoreProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <StoreProvider>
+          <StatusBar style="dark" />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(app)" />
+          </Stack>
+        </StoreProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
